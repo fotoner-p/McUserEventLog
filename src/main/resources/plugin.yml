@@ -1,0 +1,5 @@
+name: McUserEventLog
+version: '${project.version}'
+main: moe.fotone.mcusereventlog.Main
+api-version: 1.18
+authors: [ Fotone ]
