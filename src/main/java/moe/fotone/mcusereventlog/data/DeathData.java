@@ -1,6 +1,5 @@
 package moe.fotone.mcusereventlog.data;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Projectile;
@@ -17,6 +16,7 @@ public class DeathData {
     private final Entity victim;
     private final Entity killer;
     private final DamageCause cause;
+    private Projectile projectile;
 
 
     public DeathData(EntityDeathEvent event){
@@ -33,6 +33,7 @@ public class DeathData {
             Entity damager = ((EntityDamageByEntityEvent) entityDamageEvent).getDamager();
 
             if (damager instanceof Projectile) {
+                projectile = (Projectile) damager;
                 LivingEntity shooter = (LivingEntity) ((Projectile) damager).getShooter();
                 if (shooter != null) return shooter;
             }
@@ -52,5 +53,9 @@ public class DeathData {
 
     public DamageCause getCause() {
         return cause;
+    }
+
+    public Projectile getProjectile() {
+        return projectile;
     }
 }

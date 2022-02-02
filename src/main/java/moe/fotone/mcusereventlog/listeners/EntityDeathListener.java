@@ -2,12 +2,15 @@ package moe.fotone.mcusereventlog.listeners;
 
 import moe.fotone.mcusereventlog.data.DeathData;
 import moe.fotone.mcusereventlog.entity.User;
+import moe.fotone.mcusereventlog.entity.UserDeathLog;
+import moe.fotone.mcusereventlog.entity.UserHuntingLog;
 import moe.fotone.mcusereventlog.store.Database;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -19,6 +22,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
+import java.util.Date;
 
 public class EntityDeathListener implements Listener {
 
@@ -29,10 +33,29 @@ public class EntityDeathListener implements Listener {
         Entity killer = data.getKiller();
         Entity victim = data.getVictim();
         String deathReason = data.getCause().name();
+        Projectile projectile = data.getProjectile();
 
         if (killer instanceof Player && victim instanceof Monster){
+            EntityManager entityManager = Database.getEntityManager();
 
-            Bukkit.broadcastMessage("플레이어 " + killer.getName() + "이(가) " + victim.getName() + " 살생(" + deathReason + ")");
+            UserHuntingLog log = new UserHuntingLog();
+            log.setVictim(victim.getType().name());
+            log.setDeath_type(deathReason);
+            log.setProjectile(projectile != null? projectile.getName(): null);
+            log.setTime(new Date(System.currentTimeMillis()));
+
+            User user = entityManager.find(User.class, killer.getUniqueId());
+
+            if (user != null){
+                EntityTransaction transaction = entityManager.getTransaction();
+                try {
+                    transaction.begin();
+                    log.setUser(user);
+                    entityManager.persist(log);
+                } finally {
+                    transaction.commit();
+                }
+            }
         }
     }
 
@@ -41,11 +64,29 @@ public class EntityDeathListener implements Listener {
         DeathData data = new DeathData(event);
         Entity killer = data.getKiller();
         Player victim = (Player)data.getVictim();
+        Projectile projectile = data.getProjectile();
         String deathReason = data.getCause().name();
 
-//        Bukkit.broadcastMessage("플레이어 " + victim + "이(가) " + killer + " 에게 사망(" + deathReason + ")");
+        EntityManager entityManager = Database.getEntityManager();
 
-        Bukkit.broadcastMessage(victim.getUniqueId().toString());
+        UserDeathLog log = new UserDeathLog();
+        log.setKiller(killer != null? killer.getType().name() : null);
+        log.setTime(new Date(System.currentTimeMillis()));
+        log.setDeath_type(deathReason);
+        log.setProjectile(projectile != null? projectile.getName(): null);
+
+        User user = entityManager.find(User.class, victim.getUniqueId());
+
+        if (user != null){
+            EntityTransaction transaction = entityManager.getTransaction();
+            try {
+                transaction.begin();
+                log.setUser(user);
+                entityManager.persist(log);
+            } finally {
+                transaction.commit();
+            }
+        }
     }
 
     @EventHandler
@@ -56,7 +97,9 @@ public class EntityDeathListener implements Listener {
 
         User newPlayer = new User();
         newPlayer.setName(player.getName());
-        newPlayer.setId(player.getUniqueId());
+        newPlayer.setUuid(player.getUniqueId());
+        newPlayer.setServer_first_join(new Date(System.currentTimeMillis()));
+        newPlayer.setAdvancement_progress(0);
 
         if (entityManager.find(User.class, player.getUniqueId()) == null) {
             EntityTransaction transaction = entityManager.getTransaction();
